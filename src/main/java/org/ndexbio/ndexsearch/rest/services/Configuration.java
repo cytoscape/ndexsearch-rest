@@ -53,7 +53,7 @@ public class Configuration {
     public static final String SOURCE_CONFIGURATIONS_JSON_FILE = "source.configurations";
     public static final String SOURCE_POLLING_INTERVAL = "source.polling.interval";
     private static final long DEFAULT_SOURCE_POLLING_INTERVAL = 300000;
-    
+
     private static Configuration INSTANCE;
     private static final Logger _logger = LoggerFactory.getLogger(Configuration.class);
     private static String _alternateConfigurationFile;
@@ -68,8 +68,8 @@ public class Configuration {
     
     private  String _sourceConfiguration;
     private static String _sourcePollingInterval;
-    
-    
+		
+
     /**
      * Constructor that attempts to get configuration from properties file
      * specified via configPath
@@ -101,7 +101,7 @@ public class Configuration {
         
         _sourceConfiguration = props.getProperty(SOURCE_CONFIGURATIONS_JSON_FILE, "source.configurations.json");
         _sourcePollingInterval = props.getProperty(Configuration.SOURCE_POLLING_INTERVAL, Long.toString(DEFAULT_SOURCE_POLLING_INTERVAL));
-        _client = getNDExClient(props);
+		_client = getNDExClient(props);
         
     }
     
