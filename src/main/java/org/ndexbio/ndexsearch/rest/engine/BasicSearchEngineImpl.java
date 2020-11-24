@@ -161,11 +161,14 @@ public class BasicSearchEngineImpl implements SearchEngine {
 	 */
 	@Override
 	public void run() {
-		ScheduledFuture<?> servicePollFuture = _servicePollExecutor.scheduleWithFixedDelay(
-				() -> {
-					updateSourceResults();
-				}, 0, _sourcePollingInterval,TimeUnit.MILLISECONDS);
+		_logger.info("Updating source Results");
+		updateSourceResults();
+		//ScheduledFuture<?> servicePollFuture = _servicePollExecutor.scheduleWithFixedDelay(
+		//		() -> {
+		//			updateSourceResults();
+		//		}, 0, _sourcePollingInterval,TimeUnit.MILLISECONDS);
 		
+		_logger.info("Starting loop to look for tasks to process");
 		while (_shutdown == false) {
 			String id = _queryTaskIds.poll();
 			if (id == null) {
@@ -177,7 +180,7 @@ public class BasicSearchEngineImpl implements SearchEngine {
 		
 		_logger.debug("Shutdown was invoked");
 		
-		servicePollFuture.cancel(true);
+		//servicePollFuture.cancel(true);
 		_servicePollExecutor.shutdown();
 		
 		if (this._enrichClient != null) {
@@ -521,9 +524,11 @@ public class BasicSearchEngineImpl implements SearchEngine {
 		_queryResults.merge(id, qr, (oldval, newval) -> newval.updateStartTime(oldval));
 		return id;
 	}
-
+	
 	private void updateSourceResults() {
+		_logger.info("Starting update of sources");
 		SourceConfigurations sourceConfigurations = _sourceConfigurations.get();
+		
 		final List<SourceResult> sourceResults = sourceConfigurations.getSources().stream()
 				.map((sourceConfiguration) -> {
 
@@ -533,22 +538,36 @@ public class BasicSearchEngineImpl implements SearchEngine {
 					sourceResult.setDescription(sourceConfiguration.getDescription());
 					sourceResult.setEndPoint(sourceConfiguration.getEndPoint());
 					String sourceName = sourceConfiguration.getName();
-
+					
+					_logger.debug("Updating source: " + sourceConfiguration.getName());
+					
 					if (SourceResult.ENRICHMENT_SERVICE.equals(sourceName)) {
 						try {
 							DatabaseResults dbResults = this._enrichClient.getDatabaseResults();
+							if (dbResults == null){
+								throw new EnrichmentException("dbResults is null");
+							}
 							sourceResult.setDatabases(dbResults.getResults());
 
 							sourceResult.setVersion("0.1.0");
-
-							//sourceResult.setUuid("eeb4af50-83c4-4e33-ac21-87142403589b");
-							sourceResult.setNumberOfNetworks(242);
+							if (dbResults.getResults() == null){
+								throw new EnrichmentException("dbResults.getResults() is null");
+							}
+							int totalNetworks = 0;
+							for (DatabaseResult dr : dbResults.getResults()){
+								totalNetworks += Integer.parseInt(dr.getNumberOfNetworks());
+							}
+							sourceResult.setNumberOfNetworks(totalNetworks);
 
 							sourceResult.setStatus("ok");
 
 						} catch (javax.ws.rs.ProcessingException e) {
+							_logger.error("Exception "
+									+ "parsing enrichment result", e);
 							sourceResult.setStatus("error");
 						} catch (EnrichmentException e) {
+							_logger.error("Exception "
+									+ "parsing enrichment result", e);
 							sourceResult.setStatus("error");
 						}
 					} else if (SourceResult.INTERACTOME_PPI_SERVICE.equals(sourceName)) {
@@ -559,9 +578,13 @@ public class BasicSearchEngineImpl implements SearchEngine {
 							sourceResult.setNumberOfNetworks(dbResults.size());
 							sourceResult.setStatus("ok");
 						} catch (javax.ws.rs.ProcessingException e) {
+							_logger.error("Exception "
+									+ "parsing interactome ppi result", e);
 							sourceResult.setStatus("error");
 						}
 						catch (NdexException e) {
+							_logger.error("Exception "
+									+ "parsing interactome ppi result", e);
 							sourceResult.setStatus("error");
 						}
 					} else if (SourceResult.INTERACTOME_GENEASSOCIATION_SERVICE.equals(sourceName)) {
@@ -572,14 +595,19 @@ public class BasicSearchEngineImpl implements SearchEngine {
 							sourceResult.setNumberOfNetworks(dbResults.size());
 							sourceResult.setStatus("ok");
 						} catch (javax.ws.rs.ProcessingException e) {
+							_logger.error("Exception "
+									+ "parsing interactome association result", e);
 							sourceResult.setStatus("error");
 						}
 						catch (NdexException e) {
+							_logger.error("Exception "
+									+ "parsing interactome association result", e);
 							sourceResult.setStatus("error");
 						}
 					}  else if (sourceName == SourceResult.KEYWORD_SERVICE) {
 						sourceResult.setVersion("0.2.0");
 						//sourceResult.setUuid("33b9c3ca-13e5-48b9-bcd2-09070203350a");
+						// TODO WHY IS THIS HARDCODED TO 2009?????
 						sourceResult.setNumberOfNetworks(2009);
 						sourceResult.setStatus("ok");
 					}
@@ -588,6 +616,7 @@ public class BasicSearchEngineImpl implements SearchEngine {
 		InternalSourceResults internalSourceResults = new InternalSourceResults();
 		internalSourceResults.setResults(sourceResults);
 		_sourceResults.set(internalSourceResults);
+		_logger.info("Completed update of sources");
 	}
 	
 	@Override

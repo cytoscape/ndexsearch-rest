@@ -30,6 +30,8 @@ public class BasicSearchEngineFactory {
     private NdexRestClientModelAccessLayer _keywordclient;
     private SourceConfigurations _sourceConfigurations;
     private long _sourcePollingInterval;
+	private long _enrichSocketTimeout;
+	private long _enrichConnectTimeout;
     
     /**
      * Temp directory where query results will temporarily be stored.
@@ -41,6 +43,8 @@ public class BasicSearchEngineFactory {
         _taskDir = config.getSearchTaskDirectory();
         _sourceConfigurations = config.getSourceConfigurations();
         _sourcePollingInterval = config.getSourcePollingInterval();
+		_enrichSocketTimeout = 120000L;
+		_enrichConnectTimeout = 10000L;
     }
     
     
@@ -49,7 +53,7 @@ public class BasicSearchEngineFactory {
      * @return 
      */
     public SearchEngine getSearchEngine() throws Exception {
-        EnrichmentRestClient enrichClient = null;
+        EnrichmentRestClientImpl enrichClient = null;
         InteractomeRestClient interactomeClient_i = null;
         InteractomeRestClient interactomeClient_a = null;
         
@@ -57,6 +61,7 @@ public class BasicSearchEngineFactory {
         	
         	if (sc.getName().equals(SourceResult.ENRICHMENT_SERVICE)){
                 enrichClient = new EnrichmentRestClientImpl(sc.getEndPoint(), "");
+				enrichClient.setTimeouts(_sourcePollingInterval, _sourcePollingInterval);
             } else if (sc.getName().equals(SourceResult.INTERACTOME_PPI_SERVICE)){
             	interactomeClient_i = new InteractomeRestClient(sc.getEndPoint(), "");
             } else if (sc.getName().equals(SourceResult.INTERACTOME_GENEASSOCIATION_SERVICE)){
